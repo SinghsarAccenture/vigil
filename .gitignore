@@ -1,0 +1,20 @@
+# Secrets
+.env
+
+# Local data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+raw/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editor / tooling
+.claude/settings.local.json
+.vscode/
+.idea/

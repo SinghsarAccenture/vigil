@@ -1,0 +1,122 @@
+# Source registry. Synced into the `sources` table on every run.
+# expected_every_hours drives stale_sources(): 26 = daily cron plus 2h slack.
+# Placeholders (enabled: false) have no scraper yet; base_url is the regulator home page
+# and scraper_type is a provisional guess to be confirmed when each scraper is built.
+
+sources:
+  - source_id: sec_rulemaking
+    name: SEC Rulemaking Activity
+    regulator: SEC
+    jurisdiction: US
+    scraper_type: html
+    base_url: https://www.sec.gov/rules-regulations/rulemaking-activity
+    expected_every_hours: 26
+    enabled: true
+
+  - source_id: fincen
+    name: FinCEN
+    regulator: FinCEN
+    jurisdiction: US
+    scraper_type: html
+    base_url: https://www.fincen.gov
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: ofac
+    name: OFAC
+    regulator: OFAC
+    jurisdiction: US
+    scraper_type: html
+    base_url: https://ofac.treasury.gov
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: esma
+    name: ESMA
+    regulator: ESMA
+    jurisdiction: EU
+    scraper_type: html
+    base_url: https://www.esma.europa.eu
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: eba
+    name: EBA
+    regulator: EBA
+    jurisdiction: EU
+    scraper_type: html
+    base_url: https://www.eba.europa.eu
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: fca
+    name: FCA
+    regulator: FCA
+    jurisdiction: UK
+    scraper_type: html
+    base_url: https://www.fca.org.uk
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: hm_treasury
+    name: HM Treasury
+    regulator: HM Treasury
+    jurisdiction: UK
+    scraper_type: html
+    base_url: https://www.gov.uk/government/organisations/hm-treasury
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: bank_of_england
+    name: Bank of England
+    regulator: Bank of England
+    jurisdiction: UK
+    scraper_type: html
+    base_url: https://www.bankofengland.co.uk
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: sfc
+    name: SFC
+    regulator: SFC
+    jurisdiction: HK
+    scraper_type: html
+    base_url: https://www.sfc.hk
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: hkma
+    name: HKMA
+    regulator: HKMA
+    jurisdiction: HK
+    scraper_type: html
+    base_url: https://www.hkma.gov.hk
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: fatf
+    name: FATF
+    regulator: FATF
+    jurisdiction: Global
+    scraper_type: html
+    base_url: https://www.fatf-gafi.org
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: fsb
+    name: FSB
+    regulator: FSB
+    jurisdiction: Global
+    scraper_type: pdf_index
+    base_url: https://www.fsb.org
+    expected_every_hours: 26
+    enabled: false
+
+  - source_id: iosco
+    name: IOSCO
+    regulator: IOSCO
+    jurisdiction: Global
+    scraper_type: pdf_index
+    base_url: https://www.iosco.org
+    expected_every_hours: 26
+    enabled: false

@@ -1,0 +1,5 @@
+anthropic==1.13.0
+beautifulsoup4==4.15.0
+PyYAML==6.0.3
+requests==2.34.2
+pytest==9.1.1

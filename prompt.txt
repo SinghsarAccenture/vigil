@@ -1,0 +1,19 @@
+Approved: one document per release with group_key, plus the other model
+changes you proposed. Also:
+1. Store File Numbers as a JSON list plus the raw cell text. Make group_key
+   nullable and generic.
+2. Move old files to legacy/ and make sure nothing there can run. Tell me if
+   the old code hardcodes an API key. After the first full scrape, compare
+   row counts against sec_rulemaking.csv as a sanity check (no CSV import).
+3. Make one tiny test call with CLAUDE_MODEL before building the classifier,
+   and tell me whether the key/proxy accepts claude-sonnet-4-6.
+4. Install PyYAML and pytest and pin versions.
+5. The console report must flag a new Final Rule appearing in a group that
+   previously had a Proposed Rule, since that replaces the old
+   "status changed" signal.
+6. Report documents not seen in the current run (last_seen_at older than
+   the run start). Warn on any row-count decrease, abort on a sharp drop.
+7. Log the duplicate count per scan, and prefix and count any fallback IDs.
+8. Add date-parsing tests for abbreviations like "Sept.".
+9. Confirm .env is gitignored before the first commit.
+Then proceed with the schema and db layer, and pause for my review.

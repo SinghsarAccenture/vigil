@@ -1,0 +1,24 @@
+US:
+SEC
+FinCEN
+OFAC
+
+EU:
+ESMA
+EBA
+European Comission
+
+UK:
+FCA
+HM Treasury
+Bank of England
+
+HONG KONG:
+SFC
+HKMA
+FSTB
+
+Rest of the World:
+FATF
+FSB 
+IOSCO

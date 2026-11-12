@@ -66,11 +66,70 @@ def test_placeholder_answers_fall_back_to_the_keyword_guess(conn):
     assert 'data-l="High"' in html_text and "Keyword guess" in html_text
 
 
-def test_summary_counts_and_new_marker(conn):
+def test_summary_legend_counts_each_level(conn):
     load(conn, make_record(external_id="a", title="Regulation Crypto Assets"),
          make_record(external_id="b", title="EDGAR Filer Manual"))
     html_text = page(conn)
-    assert "<b>1 High</b>" in html_text and "<b>1 Low</b>" in html_text and html_text.count('class="new"') == 2
+    assert 'dot-high"></i>High<b>1</b>' in html_text and 'dot-low"></i>Low<b>1</b>' in html_text
+    assert 'dot-medium"></i>Medium<b>0</b>' in html_text
+
+
+def test_hero_figure_counts_the_filings(conn):
+    load(conn, make_record(external_id="a"), make_record(external_id="b"))
+    assert '<div class="hero">2<span>filings tracked' in page(conn)
+
+
+def test_entries_new_to_the_database_are_tagged_new(conn):
+    load(conn, make_record(external_id="a"), make_record(external_id="b"))
+    html_text = page(conn)
+    assert html_text.count('class="tag new">NEW<') == 2
+    assert html_text.count('data-new="1"') == 2
+    assert '<div class="tval">2</div><div class="tlab">New in latest run</div>' in html_text
+
+
+def test_entries_carried_over_from_an_earlier_run_are_not_tagged_new(conn):
+    load(conn, make_record(external_id="old"))
+    load(conn, make_record(external_id="old"), make_record(external_id="fresh"))
+    html_text = page(conn)
+    assert html_text.count('class="tag new">NEW<') == 1
+    assert html_text.count('data-new="0"') == 1
+
+
+def test_a_changed_filing_is_tagged_changed_with_its_version(conn):
+    load(conn, make_record(external_id="a", status="Proposed Rule"))
+    load(conn, make_record(external_id="a", status="Final Rule"))
+    html_text = page(conn)
+    assert "CHANGED &middot; v2" in html_text and 'class="tag new">NEW<' not in html_text
+    assert '<div class="tval">1</div><div class="tlab">Changed in latest run</div>' in html_text
+
+
+def test_each_filing_shows_its_supporting_detail(conn):
+    load(conn, make_record(external_id="a", division="Trading and Markets",
+                           file_numbers=["S7-01-26"], reference_numbers=["33-1000", "IA-7035"]))
+    html_text = page(conn)
+    assert "Trading and Markets" in html_text and "File S7-01-26" in html_text
+    assert "Release 33-1000, IA-7035" in html_text and "first seen " in html_text
+
+
+def test_sibling_filings_in_one_rulemaking_are_counted(conn):
+    load(conn, make_record(external_id="a", group_key="s7-01-26"),
+         make_record(external_id="b", group_key="s7-01-26"))
+    assert "2 filings in rulemaking s7-01-26" in page(conn)
+
+
+def test_a_filing_flagged_for_human_review_says_so(conn):
+    load(conn, make_record(external_id="a"))
+    version = db.get_versions(conn, db.get_document(conn, "test_src", "a")["document_id"])[0]
+    db.record_classification(conn, version["version_id"], "claude-test", "relevance_v1",
+                             {"relevant": True, "confidence": "low", "reason": "Unclear",
+                              "requires_human_review": True})
+    assert "NEEDS REVIEW" in page(conn)
+
+
+def test_every_level_is_named_in_words_not_colour_alone(conn):
+    load(conn, make_record(external_id="a", title="Regulation Crypto Assets"))
+    html_text = page(conn)
+    assert '<span class="b b-high">High</span>' in html_text
 
 
 def test_run_writes_the_dashboard_and_reports_it(conn, tmp_path):
@@ -93,3 +152,16 @@ def test_filter_buttons_do_not_capture_the_run_button(conn):
 
 def test_static_dashboard_has_no_run_button(conn):
     assert 'id="run"' not in dashboard.render(dashboard.collect(conn), "now")
+
+
+def test_placeholder_answers_do_not_tag_every_row_as_needing_review(conn):
+    load(conn, make_record(external_id="a"))
+    from vigil.llm import classifier as llm
+    llm.classify_pending(conn, llm.PLACEHOLDER)
+    assert "NEEDS REVIEW" not in page(conn)
+
+
+def test_the_run_timestamp_is_trimmed_to_the_minute(conn):
+    load(conn, make_record(external_id="a"))
+    html_text = page(conn)
+    assert ".152647" not in html_text and "+00:00" not in html_text and " UTC &middot;" in html_text

@@ -72,6 +72,18 @@ def _minute(timestamp: str | None) -> str:
     return (timestamp or "").replace("T", " ")[:16]
 
 
+def _share(part: int, whole: int) -> str:
+    """A count as a share, worded so a small non-zero share never reads as 'none'."""
+    if whole == 0 or part == 0:
+        return "none"
+    pct = 100 * part / whole
+    if pct < 1:
+        return "under 1%"
+    if pct > 99 and part < whole:
+        return "over 99%"
+    return f"{pct:.0f}%"
+
+
 def _compact(n: int) -> str:
     if n < 10_000:
         return f"{n:,}"
@@ -121,7 +133,6 @@ def render(data: dict, generated_at: str, live: bool = False) -> str:
     counts = {k: sum(1 for f in filings if f["level"] == k) for k in LEVELS}
     new_count = sum(1 for f in filings if f["new"])
     changed_count = sum(1 for f in filings if f["changed"])
-    total = max(len(filings), 1)
 
     segments = "".join(
         f'<div class="seg seg-{k.lower()}" style="flex:{counts[k]} 1 0" '
@@ -178,7 +189,8 @@ def render(data: dict, generated_at: str, live: bool = False) -> str:
             .replace("@@GENERATED@@", e(generated_at)).replace("@@HERO@@", _compact(len(filings)))
             .replace("@@HEROLAB@@", "filing" if len(filings) == 1 else "filings")
             .replace("@@TILES@@", tiles).replace("@@SEGMENTS@@", segments).replace("@@LEGEND@@", legend)
-            .replace("@@PCT@@", f"{100 * counts['High'] / total:.0f}")
+            .replace("@@HIGHN@@", f"{counts['High']:,}").replace("@@TOTALN@@", f"{len(filings):,}")
+            .replace("@@HIGHSHARE@@", _share(counts["High"], len(filings)))
             .replace("@@RUNS@@", "<br>".join(run_lines)).replace("@@BODY@@", "".join(body)))
 
 
@@ -290,8 +302,8 @@ or two, and the list will appear here when it's done.</div>
   </div>
   <div class="meter">@@SEGMENTS@@</div>
   <div>@@LEGEND@@</div>
-  <div class="sub" style="margin:10px 0 0">@@PCT@@% of tracked filings are rated High relevance. Each level is
-  shown as a word as well as a colour; hover a bar segment for its count.</div>
+  <div class="sub" style="margin:10px 0 0">Bar shows how the @@TOTALN@@ tracked filings split by relevance:
+  <b>@@HIGHN@@</b> are rated High, @@HIGHSHARE@@ of the total. Hover a segment for its count.</div>
 </div>
 <div class="sub">@@RUNS@@</div>
 <div class="tools" id="filters"><button class="on" data-f="All">All</button><button data-f="High">High</button><button data-f="Medium">Medium</button><button data-f="Low">Low</button>

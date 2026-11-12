@@ -165,3 +165,21 @@ def test_the_run_timestamp_is_trimmed_to_the_minute(conn):
     load(conn, make_record(external_id="a"))
     html_text = page(conn)
     assert ".152647" not in html_text and "+00:00" not in html_text and " UTC &middot;" in html_text
+
+
+def test_a_small_share_is_never_worded_as_zero():
+    # Regression: 3 High out of 1,611 rounded to "0%", which read as "none".
+    assert dashboard._share(3, 1611) == "under 1%"
+    assert dashboard._share(0, 1611) == "none"
+    assert dashboard._share(1610, 1611) == "over 99%"
+    assert dashboard._share(1611, 1611) == "100%"
+    assert dashboard._share(161, 1611) == "10%"
+    assert dashboard._share(0, 0) == "none"
+
+
+def test_the_summary_sentence_states_the_high_count(conn):
+    load(conn, make_record(external_id="a", title="Regulation Crypto Assets"),
+         make_record(external_id="b", title="EDGAR Filer Manual"))
+    html_text = page(conn)
+    assert "the 2 tracked filings split by relevance" in html_text
+    assert "<b>1</b> are rated High, 50% of the total" in html_text

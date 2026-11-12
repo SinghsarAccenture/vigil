@@ -39,6 +39,7 @@ import yaml  # noqa: E402
 from vigil.ingestion.base import HttpClient, ScrapeError, Source  # noqa: E402
 from vigil.ingestion.sec_rulemaking import SecRulemaking  # noqa: E402
 from vigil.llm import classifier as llm  # noqa: E402
+from vigil.report import dashboard  # noqa: E402
 from vigil.storage import db  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -277,7 +278,7 @@ def _show(value: Any) -> str:
 def run(conn: sqlite3.Connection, scrapers: Mapping[str, Source], *, mode: str = "daily",
         classify_since: str | None = None, classifier: llm.Classifier = llm.PLACEHOLDER,
         partial: bool = False, problems: Mapping[str, str] | None = None,
-        out: Callable[[str], None] = print) -> int:
+        dashboard_path: Path | None = None, out: Callable[[str], None] = print) -> int:
     """Scrape, save, classify and report. Returns the process exit code."""
     problems = problems or {}
     exit_code = 0
@@ -326,6 +327,14 @@ def run(conn: sqlite3.Connection, scrapers: Mapping[str, Source], *, mode: str =
         out(f"STALE    {s['name']}: no successful run within {s['expected_every_hours']}h (last success: {when}).")
         exit_code = 1
 
+    if dashboard_path is not None:
+        out("\nDashboard")
+        try:
+            written = dashboard.write_dashboard(conn, dashboard_path, stamp)
+            out(f"         Updated: {written.resolve()}")
+        except OSError as exc:
+            out(f"WARNING  Dashboard not updated: {type(exc).__name__}: {exc}")
+
     out("\n" + "=" * 78)
     out("RESULT: OK" if exit_code == 0 else
         "RESULT: NEEDS ATTENTION (exit code 1). See FAILED / ABORTED / STALE lines above.")
@@ -348,7 +357,38 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--max-pages", type=int, metavar="N",
                         help="only read the first N pages of each source (testing; skips row-count checks)")
     parser.add_argument("--db", type=Path, help="database file (default: VIGIL_DB_PATH or vigil.db)")
+    parser.add_argument("--dashboard", type=Path, metavar="PATH",
+                        help="where to write the HTML dashboard (default: dashboard.html next to the database)")
+    parser.add_argument("--no-dashboard", action="store_true", help="do not write the dashboard")
     return parser.parse_args(argv)
+
+
+def default_db_path() -> Path:
+    return Path(os.environ.get("VIGIL_DB_PATH") or DEFAULT_DB_PATH)
+
+
+def execute(db_path: Path, *, mode: str = "daily", classify_since: str | None = None,
+            max_pages: int | None = None, dashboard_path: Path | None = None,
+            out: Callable[[str], None] = print) -> int:
+    """Open the database, sync sources, build scrapers and do one full run.
+
+    Opens its own connection, so it is safe to call from a background thread.
+    Returns the exit code (0 = fine, 1 = needs attention).
+    """
+    conn = db.connect(db_path)
+    try:
+        db.init_db(conn)
+        sources = load_sources(SOURCES_PATH)
+        db.sync_sources(conn, sources)
+        scrapers, problems = build_scrapers(sources, max_pages)
+        return run(conn, scrapers, mode=mode, classify_since=classify_since,
+                   partial=max_pages is not None, problems=problems,
+                   dashboard_path=dashboard_path, out=out)
+    except (db.SchemaVersionError, ValueError, OSError, yaml.YAMLError) as exc:
+        out(f"FAILED   Vigil could not start: {type(exc).__name__}: {exc}")
+        return 1
+    finally:
+        conn.close()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -356,22 +396,11 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(errors="replace")
     args = parse_args(argv)
     load_env(ENV_PATH)
-    db_path = args.db or Path(os.environ.get("VIGIL_DB_PATH") or DEFAULT_DB_PATH)
-
-    conn = db.connect(db_path)
-    try:
-        db.init_db(conn)
-        sources = load_sources(SOURCES_PATH)
-        db.sync_sources(conn, sources)
-        scrapers, problems = build_scrapers(sources, args.max_pages)
-        return run(conn, scrapers, mode="baseline" if args.baseline else "daily",
-                   classify_since=args.classify_since, partial=args.max_pages is not None,
-                   problems=problems)
-    except (db.SchemaVersionError, ValueError, OSError, yaml.YAMLError) as exc:
-        print(f"FAILED   Vigil could not start: {type(exc).__name__}: {exc}")
-        return 1
-    finally:
-        conn.close()
+    db_path = args.db or default_db_path()
+    dashboard_path = None if args.no_dashboard else (args.dashboard or Path(db_path).with_name("dashboard.html"))
+    return execute(db_path, mode="baseline" if args.baseline else "daily",
+                   classify_since=args.classify_since, max_pages=args.max_pages,
+                   dashboard_path=dashboard_path)
 
 
 if __name__ == "__main__":

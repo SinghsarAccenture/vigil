@@ -7,6 +7,7 @@
 *.db-wal
 *.db-shm
 raw/
+dashboard.html
 
 # Python
 .venv/
